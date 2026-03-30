@@ -4,14 +4,17 @@ import Sidebar from "@/components/Sidebar";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
 export default function OptimizePage() {
-  const [open, setOpen] = useState(false); // 🔥 sidebar control
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [trainingCount, setTrainingCount] = useState(0);
   const [compiled, setCompiled] = useState(false);
+  const [highlight, setHighlight] = useState(false);
 
-  const fetchStatus = async () => {
+  // 🔥 Fetch Status
+  const fetchStatus = async (showToast = false) => {
     try {
       setStatusLoading(true);
       const res = await axios.get(
@@ -20,35 +23,56 @@ export default function OptimizePage() {
 
       setTrainingCount(res.data.training_examples);
       setCompiled(res.data.compiled_program_exists);
+
+      setHighlight(true);
+      setTimeout(() => setHighlight(false), 600);
+
+      if (showToast) toast.success("Status refreshed 🔄");
     } catch (err) {
       console.error(err);
+      toast.error("Failed to fetch status ❌");
     }
     setStatusLoading(false);
   };
 
+  // 🔥 Run Optimizer
   const runOptimizer = async () => {
     try {
       setLoading(true);
       await axios.post("http://127.0.0.1:8000/api/optimize/run");
 
       toast.success("Optimizer completed 🚀");
-
       fetchStatus();
     } catch (err) {
       console.error(err);
       toast.error("Optimizer failed ❌");
-      }
+    }
     setLoading(false);
   };
 
+  // 🔥 Initial load
   useEffect(() => {
     fetchStatus();
   }, []);
 
+  // 🔥 Auto refresh every 5 sec
+  useEffect(() => {
+    const interval = setInterval(() => fetchStatus(), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 🔥 Dynamic Status Text
+  const getStatusText = () => {
+    if (statusLoading) return "...";
+    if (compiled) return "Optimized ✅";
+    if (trainingCount >= 5) return "Ready to Train ⚡";
+    return "Not Ready ❌";
+  };
+
   return (
     <div className="flex min-h-screen bg-[#0b0f19] text-white">
 
-      {/* 🔥 Mobile Overlay */}
+      {/* Mobile Overlay */}
       {open && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -56,7 +80,7 @@ export default function OptimizePage() {
         />
       )}
 
-      {/* 🔥 Sidebar */}
+      {/* Sidebar */}
       <div
         className={`fixed lg:static z-50 top-0 left-0 h-full w-64 transition-transform duration-300
         ${open ? "translate-x-0" : "-translate-x-full"}
@@ -65,10 +89,10 @@ export default function OptimizePage() {
         <Sidebar />
       </div>
 
-      {/* 🔥 Main Content */}
+      {/* Main */}
       <div className="flex-1 w-full flex flex-col">
 
-        {/* 🔥 Mobile Header */}
+        {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800">
           <button
             onClick={() => setOpen(true)}
@@ -93,30 +117,32 @@ export default function OptimizePage() {
             </p>
           </div>
 
-          {/* STATUS CARDS */}
+          {/* Status Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow">
+            <div
+              className={`p-4 sm:p-5 rounded-2xl bg-[#111827] border shadow transition-all duration-300
+              ${highlight ? "border-purple-500 scale-[1.02]" : "border-gray-800"}`}
+            >
               <p className="text-gray-400 text-sm">Training Examples</p>
               <h2 className="text-xl sm:text-2xl font-bold mt-2">
                 {statusLoading ? "..." : trainingCount}
               </h2>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow">
+            <div
+              className={`p-4 sm:p-5 rounded-2xl bg-[#111827] border shadow transition-all duration-300
+              ${highlight ? "border-purple-500 scale-[1.02]" : "border-gray-800"}`}
+            >
               <p className="text-gray-400 text-sm">Model Status</p>
               <h2 className="text-xl sm:text-2xl font-bold mt-2">
-                {statusLoading
-                  ? "..."
-                  : compiled
-                  ? "Optimized ✅"
-                  : "Not Ready ❌"}
+                {getStatusText()}
               </h2>
             </div>
 
           </div>
 
-          {/* MAIN CARD */}
+          {/* Main Card */}
           <div className="p-5 sm:p-6 bg-[#111827] rounded-2xl border border-gray-800 shadow-lg space-y-4">
 
             <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
@@ -124,32 +150,36 @@ export default function OptimizePage() {
               More high-quality data = better results 🚀
             </p>
 
-            {/* FEATURES */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            {/* Extra insight */}
+            {compiled && (
+              <p className="text-green-400 text-sm">
+                Model improved using latest data 🚀
+              </p>
+            )}
 
+            {/* Features */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
               <div className="p-3 rounded-xl bg-[#0b0f19] border border-gray-700 text-center sm:text-left">
                 ⚡ Fast Training
               </div>
-
               <div className="p-3 rounded-xl bg-[#0b0f19] border border-gray-700 text-center sm:text-left">
                 🧠 Learns from data
               </div>
-
               <div className="p-3 rounded-xl bg-[#0b0f19] border border-gray-700 text-center sm:text-left">
                 📈 Improves quality
               </div>
-
             </div>
 
-            {/* BUTTONS */}
+            {/* Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
 
               <button
                 onClick={runOptimizer}
+                disabled={loading}
                 className="flex-1 px-6 py-3 rounded-xl font-medium 
                 bg-gradient-to-r cursor-pointer from-purple-500 to-pink-500 
                 hover:scale-[1.03] active:scale-[0.97] transition 
-                flex items-center justify-center shadow-md"
+                flex items-center justify-center shadow-md disabled:opacity-50"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -162,9 +192,11 @@ export default function OptimizePage() {
               </button>
 
               <button
-                onClick={fetchStatus}
+                onClick={() => fetchStatus(true)}
+                disabled={statusLoading}
                 className="flex-1 px-6 py-3 rounded-xl font-medium 
-                bg-[#0b0f19] border cursor-pointer border-gray-700 hover:border-purple-500 transition"
+                bg-[#0b0f19] border cursor-pointer border-gray-700 
+                hover:border-purple-500 transition disabled:opacity-50"
               >
                 Refresh Status 🔄
               </button>
